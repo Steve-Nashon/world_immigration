@@ -3,7 +3,7 @@
     "esbuild": "^0.19.2"
   },
     "type": "module",
-    "script":{
+    "scripts":{
       "start": "node esbuild.js --watch"
 
   },

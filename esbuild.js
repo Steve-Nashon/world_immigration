@@ -1,8 +1,12 @@
-import esbuild from 'esbuild';
 
 
-esbuild.build({
-    entryPoints: ['src/index.js'],
-    bundle: true,
-    outfile: 'dist/bundle.js'
-}).catch(() => process.exit(1))
+import * as esbuild from 'esbuild'
+
+let result = await esbuild.context({
+  entryPoints: ['src/index.js'],
+  bundle: true,
+  outdir: 'dist',
+ 
+})
+
+await result.watch()
