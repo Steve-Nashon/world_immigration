@@ -7,7 +7,9 @@ import {
     zoom,
     zoomIdentity,
     pointer,
-    zoomTransform
+    zoomTransform,
+    scaleLinear,
+    drag
 } from 'd3'
 import {feature} from 'topojson'
 
@@ -23,23 +25,30 @@ let svg = select('svg')
             .on("click", reset);
 
 
-const g = svg.append('g')
+const globe = svg.append('g')
+// .attr('class', 'maingroup')
 
-const projection = geoOrthographic();
+const projection = geoOrthographic()
+                    .scale(300)
+                    // .clipAngle(90)
+                    // .rotate([40.15931867632162, -37.707083712027384]);
+const initialScale = projection.scale();
 const pathGenerator = geoPath()
                         .projection(projection);
+
+
+
+
 
 
 // add an event handler that gets called when a zoom or pan event occurs. 
 // The event handler receives a transform which can be applied
 let zoomed = (event) =>{
-    const {transform} = event; // this is the same as transform = event.transform 
+    const {transform} = event;
+    // this is the same as transform = event.transform 
     // console.log('event')
-    g.attr("transform", transform);
-    // g.attr("stroke-width", 1 / transform.k);
-
-
-  
+    globe.attr("transform", transform);
+    // g.attr("stroke-width", 1 / transform.k)
 }
 
 
@@ -48,23 +57,17 @@ const zooom = zoom()
 
 
 
-
-g.append('path')
-    .attr('d' ,d => pathGenerator({
-        type: 'Sphere'
-    }))
-    .attr('fill', '#00a5a7')
-
-svg.call(zooom)
+    svg.call(zooom)
 
 
+.attr('fill', '#00a5a7')
 function clicked(event, d) {
     // using Destructuring it extracts the bounds of the data element (d) using the path.bounds
     const [[x0, y0], [x1, y1]] = pathGenerator.bounds(d);
     event.stopPropagation();
     // paths.transition().style("fill", null);
     select(this).transition().style("fill", "red");
-    svg.transition().duration(750).call(
+    globe.transition().duration(750).call(
         // called to apply a new transformation
         zooom.transform,
         zoomIdentity
@@ -100,32 +103,67 @@ let atlas = json('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json
         let country = feature(jsondata, jsondata.objects.countries)
         
     //    const svg = body.append('svg')
+    let moving = false
+    globe.append('path')
+        .attr('d' ,d => pathGenerator({ type: 'Sphere' }))
+        .attr('fill', '#368DC5');    
+    const render = () =>{
 
-        const paths = g.selectAll('path')
-                            .data(country.features)           
-                    paths.enter()
-                        .append('path')
-                            .attr('d' ,d => pathGenerator(d))
-                            .attr('fill', '#ded4d4')
-                            .attr('stroke','black')
-                            .attr('stroke-opacity', 0.1)
-                            .on('click', clicked)
+        const paths = globe.selectAll('path.country')
+                            .data(country.features)       
+                    paths.join(
+
+                        enter =>{
+                            enter
+                            .append('path')
+                                .attr('class', 'country')
+                                .attr('d' ,d => pathGenerator(d))
+                                .attr('fill', '#ded4d4')
+                                .attr('stroke','black')
+                                .attr('stroke-opacity', 0.1)
+                                .on('click', clicked)
+                            },
+
+                        update =>{
+                            update
+                                .attr('d' ,d => pathGenerator(d))
+
+                        }
+                    )                  
+                
+                }
+                render()
+
+    let rotate0, coords0;
+                const coords = (event) =>
+                  projection
+                    .rotate(rotate0)
+                    .invert([event.x, event.y])
 
 
+    let dragFunction = drag()
+                    .on('start', (event) => {
+                        rotate0 = projection.rotate();
+                        coords0 = coords(event);
+                    moving = true;
+                    })
+                    .on('drag', (event) => {  
+                        const coords1 = coords(event);
+                        projection.rotate([
+                          rotate0[0] + coords1[0] - coords0[0],
+                          rotate0[1] + coords1[1] - coords0[1],
+                        ]);
+                    render()
+                    })
+                    .on('end', () => {
+                    moving = false;
+                    render()      
+                    })
 
-
-
-
-
-
-
-
-
-
+    globe.call(dragFunction)
+    
 
     }
-
-
 
 )
 
